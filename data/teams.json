@@ -1,0 +1,24 @@
+[
+  {
+    "id": "team_den",
+    "name": "Denver Nuggets",
+    "players": [
+      { "id": "p_jokic", "name": "Nikola Jokic", "position": "C", "ratings": { "insideScoring": 92, "midrange": 78, "threePoint": 72, "passing": 96, "ballHandling": 82, "rebounding": 88, "interiorDefense": 74, "perimeterDefense": 52, "steals": 58, "blocks": 68, "athleticism": 65, "stamina": 88, "basketballIQ": 98, "potential": 85 } },
+      { "id": "p_murray", "name": "Jamal Murray", "position": "PG", "ratings": { "insideScoring": 68, "midrange": 82, "threePoint": 84, "passing": 78, "ballHandling": 88, "rebounding": 42, "interiorDefense": 38, "perimeterDefense": 62, "steals": 58, "blocks": 22, "athleticism": 78, "stamina": 82, "basketballIQ": 82, "potential": 78 } },
+      { "id": "p_gordon", "name": "Aaron Gordon", "position": "PF", "ratings": { "insideScoring": 78, "midrange": 62, "threePoint": 58, "passing": 58, "ballHandling": 64, "rebounding": 72, "interiorDefense": 68, "perimeterDefense": 58, "steals": 52, "blocks": 58, "athleticism": 82, "stamina": 86, "basketballIQ": 68, "potential": 72 } },
+      { "id": "p_porter", "name": "Michael Porter Jr.", "position": "SF", "ratings": { "insideScoring": 72, "midrange": 68, "threePoint": 86, "passing": 52, "ballHandling": 58, "rebounding": 68, "interiorDefense": 48, "perimeterDefense": 52, "steals": 42, "blocks": 48, "athleticism": 74, "stamina": 78, "basketballIQ": 64, "potential": 80 } },
+      { "id": "p_caldwell", "name": "Kentavious Caldwell-Pope", "position": "SG", "ratings": { "insideScoring": 58, "midrange": 64, "threePoint": 78, "passing": 58, "ballHandling": 68, "rebounding": 38, "interiorDefense": 48, "perimeterDefense": 72, "steals": 68, "blocks": 22, "athleticism": 72, "stamina": 84, "basketballIQ": 72, "potential": 58 } }
+    ]
+  },
+  {
+    "id": "team_lal",
+    "name": "Los Angeles Lakers",
+    "players": [
+      { "id": "p_lebron", "name": "LeBron James", "position": "PF", "ratings": { "insideScoring": 88, "midrange": 76, "threePoint": 68, "passing": 92, "ballHandling": 86, "rebounding": 72, "interiorDefense": 64, "perimeterDefense": 68, "steals": 62, "blocks": 48, "athleticism": 78, "stamina": 82, "basketballIQ": 96, "potential": 72 } },
+      { "id": "p_ad", "name": "Anthony Davis", "position": "C", "ratings": { "insideScoring": 90, "midrange": 74, "threePoint": 48, "passing": 58, "ballHandling": 64, "rebounding": 86, "interiorDefense": 88, "perimeterDefense": 62, "steals": 58, "blocks": 82, "athleticism": 82, "stamina": 78, "basketballIQ": 82, "potential": 78 } },
+      { "id": "p_reaves", "name": "Austin Reaves", "position": "SG", "ratings": { "insideScoring": 72, "midrange": 78, "threePoint": 82, "passing": 74, "ballHandling": 76, "rebounding": 44, "interiorDefense": 48, "perimeterDefense": 66, "steals": 58, "blocks": 28, "athleticism": 68, "stamina": 84, "basketballIQ": 78, "potential": 70 } },
+      { "id": "p_rui", "name": "Rui Hachimura", "position": "SF", "ratings": { "insideScoring": 76, "midrange": 64, "threePoint": 66, "passing": 48, "ballHandling": 58, "rebounding": 58, "interiorDefense": 52, "perimeterDefense": 48, "steals": 42, "blocks": 38, "athleticism": 72, "stamina": 80, "basketballIQ": 62, "potential": 68 } },
+      { "id": "p_dlo", "name": "D'Angelo Russell", "position": "PG", "ratings": { "insideScoring": 62, "midrange": 74, "threePoint": 84, "passing": 82, "ballHandling": 80, "rebounding": 36, "interiorDefense": 34, "perimeterDefense": 52, "steals": 52, "blocks": 18, "athleticism": 68, "stamina": 78, "basketballIQ": 74, "potential": 66 } }
+    ]
+  }
+]

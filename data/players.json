@@ -1,0 +1,107 @@
+[
+  {
+    "id": "p_jokic",
+    "name": "Nikola Jokic",
+    "position": "C",
+    "ratings": {
+      "insideScoring": 92,
+      "midrange": 78,
+      "threePoint": 72,
+      "passing": 96,
+      "ballHandling": 82,
+      "rebounding": 88,
+      "interiorDefense": 74,
+      "perimeterDefense": 52,
+      "steals": 58,
+      "blocks": 68,
+      "athleticism": 65,
+      "stamina": 88,
+      "basketballIQ": 98,
+      "potential": 85
+    }
+  },
+  {
+    "id": "p_murray",
+    "name": "Jamal Murray",
+    "position": "PG",
+    "ratings": {
+      "insideScoring": 68,
+      "midrange": 82,
+      "threePoint": 84,
+      "passing": 78,
+      "ballHandling": 88,
+      "rebounding": 42,
+      "interiorDefense": 38,
+      "perimeterDefense": 62,
+      "steals": 58,
+      "blocks": 22,
+      "athleticism": 78,
+      "stamina": 82,
+      "basketballIQ": 82,
+      "potential": 78
+    }
+  },
+  {
+    "id": "p_gordon",
+    "name": "Aaron Gordon",
+    "position": "PF",
+    "ratings": {
+      "insideScoring": 78,
+      "midrange": 62,
+      "threePoint": 58,
+      "passing": 58,
+      "ballHandling": 64,
+      "rebounding": 72,
+      "interiorDefense": 68,
+      "perimeterDefense": 58,
+      "steals": 52,
+      "blocks": 58,
+      "athleticism": 82,
+      "stamina": 86,
+      "basketballIQ": 68,
+      "potential": 72
+    }
+  },
+  {
+    "id": "p_porter",
+    "name": "Michael Porter Jr.",
+    "position": "SF",
+    "ratings": {
+      "insideScoring": 72,
+      "midrange": 68,
+      "threePoint": 86,
+      "passing": 52,
+      "ballHandling": 58,
+      "rebounding": 68,
+      "interiorDefense": 48,
+      "perimeterDefense": 52,
+      "steals": 42,
+      "blocks": 48,
+      "athleticism": 74,
+      "stamina": 78,
+      "basketballIQ": 64,
+      "potential": 80
+    }
+  },
+  {
+    "id": "p_caldwell",
+    "name": "Kentavious Caldwell-Pope",
+    "position": "SG",
+    "ratings": {
+      "insideScoring": 58,
+      "midrange": 64,
+      "threePoint": 78,
+      "passing": 58,
+      "ballHandling": 68,
+      "rebounding": 38,
+      "interiorDefense": 48,
+      "perimeterDefense": 72,
+      "steals": 68,
+      "blocks": 22,
+      "athleticism": 72,
+      "stamina": 84,
+      "basketballIQ": 72,
+      "potential": 58
+    }
+  }
+]

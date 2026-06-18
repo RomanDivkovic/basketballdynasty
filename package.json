@@ -1,0 +1,18 @@
+{
+  "name": "basketball-dynasty-manager",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace=@basketball-dynasty/shared-types && npm run build --workspace=@basketball-dynasty/ai-coaching && npm run build --workspace=@basketball-dynasty/simulation-engine && npm run build --workspace=@basketball-dynasty/data-loader && npm run build --workspace=@basketball-dynasty/save-system",
+    "clean": "npm run clean --workspace=@basketball-dynasty/shared-types && npm run clean --workspace=@basketball-dynasty/ai-coaching && npm run clean --workspace=@basketball-dynasty/simulation-engine && npm run clean --workspace=@basketball-dynasty/data-loader && npm run clean --workspace=@basketball-dynasty/save-system",
+    "build:types": "npm run build --workspace=@basketball-dynasty/shared-types",
+    "build:engine": "npm run build --workspace=@basketball-dynasty/simulation-engine"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    "typescript": "^5.4.5"
+  }
+}

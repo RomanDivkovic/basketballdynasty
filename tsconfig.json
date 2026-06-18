@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "lib": ["ES2022"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@basketball-dynasty/shared-types": ["packages/shared-types/src"],
+      "@basketball-dynasty/simulation-engine": ["packages/simulation-engine/src"],
+      "@basketball-dynasty/ai-coaching": ["packages/ai-coaching/src"],
+      "@basketball-dynasty/data-loader": ["packages/data-loader/src"],
+      "@basketball-dynasty/save-system": ["packages/save-system/src"]
+    }
+  },
+  "references": [
+    { "path": "packages/shared-types" },
+    { "path": "packages/ai-coaching" },
+    { "path": "packages/simulation-engine" },
+    { "path": "packages/data-loader" },
+    { "path": "packages/save-system" }
+  ]
+}
