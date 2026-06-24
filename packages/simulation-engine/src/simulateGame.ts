@@ -1,4 +1,4 @@
-import { Team, GameResult, PossessionResult } from '@basketball-dynasty/shared-types';
+import type { Team, PossessionResult, GameResult as BaseGameResult } from '@basketball-dynasty/shared-types';
 import { createRNG, RNG, defaultRNG } from './rng';
 import {
   createInitialFatigue,
@@ -13,12 +13,25 @@ import {
   RotationConfig,
   DEFAULT_ROTATION_CONFIG,
 } from './lineup';
+import {
+  PlayerGameStats,
+  createEmptyPlayerGameStats,
+  computeMinutesPlayed,
+} from './playerStats';
 
 export interface SimulateGameOptions {
   totalPossessions?: number;
   seed?: number;
   /** Possessions between rotation checks. Lower = more frequent subs. */
   rotationInterval?: number;
+}
+
+/**
+ * Extended GameResult produced by the simulation engine.
+ * Adds rich per-player box score stats generated naturally during play.
+ */
+export interface GameResult extends BaseGameResult {
+  playerStats: Record<string, PlayerGameStats>;
 }
 
 export function simulateGame(
@@ -58,14 +71,31 @@ export function simulateGame(
   };
   allPlayers.forEach((p) => initPoints(p.id));
 
+  // Box score stats - initialized for every player on the rosters
+  const playerStats: Record<string, PlayerGameStats> = {};
+  allPlayers.forEach((p) => {
+    playerStats[p.id] = createEmptyPlayerGameStats();
+  });
+
+  // Track how many possessions each player was on the court for (both ends)
+  const onCourtPossessions: Record<string, number> = {};
+
   while (possessionIndex < totalPossessions) {
-    // Run the possession using ONLY the current active 5 on each side
+    // Track participation for minutesPlayed (before the possession executes)
+    const activeThisPoss = [...offenseState.active, ...defenseState.active];
+    activeThisPoss.forEach((p) => {
+      onCourtPossessions[p.id] = (onCourtPossessions[p.id] ?? 0) + 1;
+    });
+
+    // Run the possession using ONLY the current active 5 on each side.
+    // Stats are recorded naturally inside simulatePossession.
     const { result, keepPossession } = simulatePossession({
       offenseTeamId: offenseState.teamId,
       offensePlayers: offenseState.active,
       defensePlayers: defenseState.active,
       fatigue,
       rng,
+      playerStats,
     });
 
     possessions.push(result);
@@ -108,6 +138,13 @@ export function simulateGame(
     // keepPossession: same offense keeps the ball with current active 5
   }
 
+  // Finalize minutesPlayed from participation counts (deterministic mapping)
+  const totalPossForTime = possessions.length;
+  Object.keys(playerStats).forEach((pid) => {
+    const part = onCourtPossessions[pid] ?? 0;
+    playerStats[pid].minutesPlayed = computeMinutesPlayed(part, totalPossForTime);
+  });
+
   return {
     teamAId: teamA.id,
     teamBId: teamB.id,
@@ -115,6 +152,7 @@ export function simulateGame(
     finalScoreB: scoreB,
     possessions,
     pointsScored,
+    playerStats,
   };
 }
 

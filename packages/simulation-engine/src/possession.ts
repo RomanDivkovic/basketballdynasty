@@ -6,6 +6,7 @@ import { chooseDefenseReaction } from './defenseSelection';
 import { resolvePossession, PossessionContext } from './probability';
 import { generatePlayDescription } from './playDescription';
 import { applyFatigue } from './fatigue';
+import { ensurePlayerStats, PlayerGameStats } from './playerStats';
 
 export interface PossessionInput {
   /** Team id of the offense (for result tracking) */
@@ -16,6 +17,8 @@ export interface PossessionInput {
   defensePlayers: Player[];
   fatigue: Record<string, number>;
   rng: RNG;
+  /** Accumulator for box score stats (mutated during the possession) */
+  playerStats: Record<string, PlayerGameStats>;
 }
 
 export function simulatePossession(input: PossessionInput): {
@@ -23,7 +26,7 @@ export function simulatePossession(input: PossessionInput): {
   description: string;
   keepPossession: boolean;
 } {
-  const { offenseTeamId, offensePlayers, defensePlayers, fatigue, rng } = input;
+  const { offenseTeamId, offensePlayers, defensePlayers, fatigue, rng, playerStats } = input;
 
   if (offensePlayers.length === 0) {
     throw new Error('simulatePossession called with empty offensePlayers');
@@ -53,6 +56,64 @@ export function simulatePossession(input: PossessionInput): {
     outcome.points,
     choice.shotType
   );
+
+  // === Record natural box score stats from this possession ===
+  ensurePlayerStats(playerStats, primary.id);
+  const shooterStats = playerStats[primary.id];
+  const isThree = choice.shotType === 'three';
+
+  // Every non-turnover possession that reaches a shot decision counts as a field goal attempt
+  // (turnovers are already branched before shot attempt in resolve)
+  if (!outcome.turnover) {
+    shooterStats.fieldGoalsAttempted += 1;
+    if (isThree) {
+      shooterStats.threePointersAttempted += 1;
+    }
+  }
+
+  if (outcome.made) {
+    shooterStats.fieldGoalsMade += 1;
+    if (isThree) {
+      shooterStats.threePointersMade += 1;
+    }
+    shooterStats.points += outcome.points;
+
+    // Assist: on made baskets, often created by teammate (pick-and-roll, drive, post, etc.)
+    if (offensePlayers.length > 1 && rng() < 0.58) {
+      const candidates = offensePlayers.filter((p) => p.id !== primary.id);
+      if (candidates.length > 0) {
+        const assister = candidates[Math.floor(rng() * candidates.length)];
+        ensurePlayerStats(playerStats, assister.id);
+        playerStats[assister.id].assists += 1;
+      }
+    }
+  }
+
+  if (outcome.turnover) {
+    shooterStats.turnovers += 1;
+  }
+
+  // Rebound on misses (not turnovers)
+  if (!outcome.made && !outcome.turnover) {
+    const pool = outcome.offensiveRebound ? offensePlayers : defensePlayers;
+    if (pool.length > 0) {
+      const reb = pool[Math.floor(rng() * pool.length)];
+      ensurePlayerStats(playerStats, reb.id);
+      playerStats[reb.id].rebounds += 1;
+    }
+  }
+
+  // Apply block credit if the outcome carried one
+  if (outcome.blockBy) {
+    ensurePlayerStats(playerStats, outcome.blockBy);
+    playerStats[outcome.blockBy].blocks += 1;
+  }
+
+  // Apply steal credit if the outcome carried one
+  if (outcome.stealBy) {
+    ensurePlayerStats(playerStats, outcome.stealBy);
+    playerStats[outcome.stealBy].steals += 1;
+  }
 
   // Apply fatigue to primary ball handler (high usage)
   applyFatigue(fatigue, primary.id, primary, 1.15);
