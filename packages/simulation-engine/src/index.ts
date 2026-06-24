@@ -1,4 +1,5 @@
-export { simulateGame, SimulateGameOptions } from './simulateGame';
+export { simulateGame } from './simulateGame';
+export type { GameResult, SimulateGameOptions } from './simulateGame';
 export { createRNG } from './rng';
 export type { RNG } from './rng';
 
@@ -25,3 +26,11 @@ export { chooseDefenseReaction } from './defenseSelection';
 export type { DefenseReaction } from './defenseSelection';
 export { resolvePossession } from './probability';
 export type { PossessionContext, Outcome } from './probability';
+
+// Player box score stats (generated naturally from possessions)
+export {
+  createEmptyPlayerGameStats,
+  computeMinutesPlayed,
+  ensurePlayerStats,
+} from './playerStats';
+export type { PlayerGameStats } from './playerStats';

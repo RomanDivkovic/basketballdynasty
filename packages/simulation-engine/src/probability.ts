@@ -20,6 +20,9 @@ export interface Outcome {
   turnover: boolean;
   offensiveRebound: boolean;
   descriptionSuffix: string;
+  // Natural stat events emerging from the possession
+  blockBy?: string; // playerId of the defender who blocked the shot
+  stealBy?: string; // playerId of the defender who stole the ball on turnover
 }
 
 /**
@@ -92,20 +95,39 @@ export function resolvePossession(ctx: PossessionContext, rng: RNG): Outcome {
 
   // First decide if turnover
   if (rng() < turnoverProb) {
+    let stealBy: string | undefined;
+    if (defensiveTeamPlayers.length > 0 && rng() < 0.42) {
+      const idx = Math.floor(rng() * defensiveTeamPlayers.length);
+      stealBy = defensiveTeamPlayers[idx].id;
+    }
     return {
       made: false,
       points: 0,
       turnover: true,
       offensiveRebound: false,
       descriptionSuffix: 'turnover',
+      stealBy,
     };
+  }
+
+  // Check for block on inside-oriented attempts (before final make roll)
+  let blockBy: string | undefined;
+  const canBeBlocked = shotType === 'inside' || action === 'drive' || action === 'post-up';
+  if (canBeBlocked && defensiveTeamPlayers.length > 0 && rng() < 0.038) {
+    const idx = Math.floor(rng() * defensiveTeamPlayers.length);
+    blockBy = defensiveTeamPlayers[idx].id;
   }
 
   // Roll for make/miss with variance
   const variance = (rng() - 0.5) * 0.22;
   const finalProb = Math.max(0.12, Math.min(0.95, makeProb + variance));
 
-  const made = rng() < finalProb;
+  let made = rng() < finalProb;
+
+  // Apply block if rolled (forces miss)
+  if (blockBy) {
+    made = false;
+  }
 
   if (made) {
     const points = shotType === 'three' ? 3 : 2;
@@ -115,6 +137,8 @@ export function resolvePossession(ctx: PossessionContext, rng: RNG): Outcome {
       turnover: false,
       offensiveRebound: false,
       descriptionSuffix: 'GOOD',
+      blockBy: undefined,
+      stealBy: undefined,
     };
   }
 
@@ -130,6 +154,8 @@ export function resolvePossession(ctx: PossessionContext, rng: RNG): Outcome {
     turnover: false,
     offensiveRebound,
     descriptionSuffix: offensiveRebound ? 'miss, offensive rebound' : 'miss',
+    blockBy,
+    stealBy: undefined,
   };
 }
 

@@ -1,4 +1,5 @@
 import { simulateGame } from '../simulateGame';
+import type { PlayerGameStats } from '../playerStats';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -65,6 +66,35 @@ function main() {
 
   printFirstN(run1.possessions, 'Run1');
   printFirstN(run2.possessions, 'Run2');
+
+  // === New box score highlights (from naturally generated playerStats) ===
+  const nameMap: Record<string, string> = {};
+  [...teamA.players, ...teamB.players].forEach((p) => {
+    nameMap[p.id] = p.name;
+  });
+
+  console.log('\n--- Box score leaders (Run1) ---');
+  console.log(`Top scorer:    ${getTopStat(nameMap, run1.playerStats, 'points')}`);
+  console.log(`Top rebounder: ${getTopStat(nameMap, run1.playerStats, 'rebounds')}`);
+  console.log(`Top assister:  ${getTopStat(nameMap, run1.playerStats, 'assists')}`);
+}
+
+function getTopStat(
+  nameMap: Record<string, string>,
+  stats: Record<string, PlayerGameStats>,
+  key: keyof PlayerGameStats
+): string {
+  let bestId = '';
+  let bestVal = -Infinity;
+  for (const [id, s] of Object.entries(stats)) {
+    const v = (s as any)[key] ?? 0;
+    if (v > bestVal) {
+      bestVal = v;
+      bestId = id;
+    }
+  }
+  const name = nameMap[bestId] || bestId;
+  return `${name} - ${bestVal}`;
 }
 
 main();
