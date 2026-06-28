@@ -9,48 +9,126 @@ export type DefenseReaction =
   | 'help-defense'
   | 'stay-home';
 
+function pickWeightedDefender(players: Player[], weights: number[], rng: RNG): Player {
+  const total = weights.reduce((a, b) => a + b, 0);
+  let roll = rng() * total;
+
+  for (let i = 0; i < players.length; i++) {
+    roll -= weights[i];
+    if (roll <= 0) {
+      return players[i];
+    }
+  }
+  return players[players.length - 1];
+}
+
 /**
- * Choose defensive reaction using ONLY the active on-court defenders.
+ * Select the primary on-ball defender for the possession.
+ * Matchup selection depends on the offensive action / shot type.
+ */
+export function selectPrimaryDefender(
+  defensivePlayers: Player[],
+  offenseAction: string,
+  shotType: 'inside' | 'midrange' | 'three',
+  rng: RNG
+): Player {
+  if (defensivePlayers.length === 0) {
+    throw new Error('Cannot select defender from empty lineup');
+  }
+
+  const weights = defensivePlayers.map((p) => {
+    const r = p.ratings;
+
+    if (shotType === 'inside' || offenseAction === 'post-up' || offenseAction === 'drive') {
+      return Math.pow(
+        Math.max(1, r.interiorDefense * 0.52 + r.blocks * 0.23 + r.athleticism * 0.25),
+        1.5
+      );
+    }
+
+    if (shotType === 'three' || offenseAction === 'catch-and-shoot-three') {
+      return Math.pow(
+        Math.max(1, r.perimeterDefense * 0.62 + r.athleticism * 0.23 + r.steals * 0.15),
+        1.5
+      );
+    }
+
+    // Midrange / mixed actions
+    return Math.pow(
+      Math.max(
+        1,
+        r.perimeterDefense * 0.42 + r.interiorDefense * 0.33 + r.athleticism * 0.25
+      ),
+      1.45
+    );
+  });
+
+  return pickWeightedDefender(defensivePlayers, weights, rng);
+}
+
+/**
+ * Build a defense array weighted toward the primary matchup defender.
+ * probability.ts averages all defenders — repeating the primary skews that average
+ * without modifying the probability engine.
+ */
+export function buildWeightedDefenseLineup(
+  primaryDefender: Player,
+  allDefenders: Player[],
+  primaryWeight = 3
+): Player[] {
+  const weighted: Player[] = [];
+  for (let i = 0; i < primaryWeight; i++) {
+    weighted.push(primaryDefender);
+  }
+  for (const p of allDefenders) {
+    if (p.id !== primaryDefender.id) {
+      weighted.push(p);
+    }
+  }
+  return weighted;
+}
+
+/**
+ * Choose defensive reaction using the primary matchup defender's profile.
  */
 export function chooseDefenseReaction(
   offenseAction: string,
   defensivePlayers: Player[],
   primaryOffender: Player,
-  rng: RNG
+  rng: RNG,
+  shotType: 'inside' | 'midrange' | 'three' = 'midrange',
+  primaryDefender?: Player
 ): DefenseReaction {
-  const players = defensivePlayers;
-  if (players.length === 0) return 'stay-home';
+  if (defensivePlayers.length === 0) return 'stay-home';
 
-  // Aggregate defensive strength for area (raw ratings; fatigue is applied upstream in probability)
-  const avgInterior = players.reduce((s, p) => s + p.ratings.interiorDefense, 0) / players.length;
-  const avgPerimeter = players.reduce((s, p) => s + p.ratings.perimeterDefense, 0) / players.length;
+  const defender =
+    primaryDefender ??
+    selectPrimaryDefender(defensivePlayers, offenseAction, shotType, rng);
+  const r = defender.ratings;
 
-  const action = offenseAction;
+  const interior = r.interiorDefense;
+  const perimeter = r.perimeterDefense;
 
-  // Heuristic: inside actions -> more help/double
-  if (action === 'post-up' || action === 'drive') {
-    if (avgInterior > 72 && rng() < 0.35) return 'double-team';
-    if (rng() < 0.5) return 'help-defense';
+  if (offenseAction === 'post-up' || offenseAction === 'drive') {
+    if (interior > 74 && rng() < 0.38) return 'double-team';
+    if (rng() < 0.52) return 'help-defense';
     return 'switch';
   }
 
-  // Perimeter actions
-  if (action === 'catch-and-shoot-three') {
-    if (avgPerimeter > 70 && rng() < 0.6) return 'close-out';
+  if (offenseAction === 'catch-and-shoot-three') {
+    if (perimeter > 72 && rng() < 0.62) return 'close-out';
     return rng() < 0.5 ? 'stay-home' : 'switch';
   }
 
-  if (action === 'midrange-jumper' || action === 'isolation') {
-    if (rng() < 0.3) return 'switch';
-    if (rng() < 0.5) return 'drop';
+  if (offenseAction === 'midrange-jumper' || offenseAction === 'isolation') {
+    if (rng() < 0.32) return 'switch';
+    if (rng() < 0.52) return 'drop';
     return 'help-defense';
   }
 
-  if (action === 'pick-and-roll') {
+  if (offenseAction === 'pick-and-roll') {
     return rng() < 0.55 ? 'switch' : 'drop';
   }
 
-  // Default
   return rng() < 0.5 ? 'switch' : 'help-defense';
 }
-

@@ -1,5 +1,16 @@
 export { simulateGame } from './simulateGame';
 export type { GameResult, SimulateGameOptions } from './simulateGame';
+export { createGameContext, swapPossession } from './gameContext';
+export type { GameContext, ActiveLineups } from './gameContext';
+export {
+  createGameClock,
+  advanceClock,
+  beginNextQuarter,
+  formatClock,
+  QUARTER_LENGTH_SECONDS,
+  GAME_LENGTH_SECONDS,
+} from './gameClock';
+export type { GameClockState, ClockAdvanceResult } from './gameClock';
 export { createRNG } from './rng';
 export type { RNG } from './rng';
 

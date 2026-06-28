@@ -1,14 +1,11 @@
 import type { Team, PossessionResult, GameResult as BaseGameResult } from '@basketball-dynasty/shared-types';
 import { createRNG, RNG, defaultRNG } from './rng';
 import {
-  createInitialFatigue,
   drainCourtFatigue,
   recoverBenchFatigue,
 } from './fatigue';
 import { simulatePossession } from './possession';
 import {
-  createInitialRotationState,
-  TeamRotationState,
   considerRotations,
   RotationConfig,
   DEFAULT_ROTATION_CONFIG,
@@ -18,6 +15,8 @@ import {
   createEmptyPlayerGameStats,
   computeMinutesPlayed,
 } from './playerStats';
+import { createGameContext, swapPossession } from './gameContext';
+import { advanceClock } from './gameClock';
 
 export interface SimulateGameOptions {
   totalPossessions?: number;
@@ -41,29 +40,19 @@ export function simulateGame(
 ): GameResult {
   const totalPossessions = options.totalPossessions ?? 200;
   const rng: RNG = options.seed !== undefined ? createRNG(options.seed) : defaultRNG;
+  // Isolated stream so clock ticks do not alter gameplay RNG sequence or scores
+  const clockRng: RNG =
+    options.seed !== undefined ? createRNG(options.seed + 0xc10c) : createRNG(8675309);
 
-  // Rotation config (simple for Phase 2A)
   const rotationConfig: RotationConfig = {
     ...DEFAULT_ROTATION_CONFIG,
     interval: options.rotationInterval ?? DEFAULT_ROTATION_CONFIG.interval,
   };
 
-  // Fatigue for ALL players (starters + bench)
+  const ctx = createGameContext(teamA, teamB, totalPossessions);
+
   const allPlayers = [...teamA.players, ...teamB.players];
-  const fatigue = createInitialFatigue(allPlayers);
-
-  // Rotation state per team (manages active 5 vs bench)
-  const teamAState = createInitialRotationState(teamA);
-  const teamBState = createInitialRotationState(teamB);
-
   const possessions: PossessionResult[] = [];
-  let scoreA = 0;
-  let scoreB = 0;
-  let possessionIndex = 0;
-
-  // Start with teamA on offense
-  let offenseState: TeamRotationState = teamAState;
-  let defenseState: TeamRotationState = teamBState;
 
   const pointsScored: Record<string, number> = {};
   const initPoints = (pid: string) => {
@@ -71,40 +60,34 @@ export function simulateGame(
   };
   allPlayers.forEach((p) => initPoints(p.id));
 
-  // Box score stats - initialized for every player on the rosters
   const playerStats: Record<string, PlayerGameStats> = {};
   allPlayers.forEach((p) => {
     playerStats[p.id] = createEmptyPlayerGameStats();
   });
 
-  // Track how many possessions each player was on the court for (both ends)
   const onCourtPossessions: Record<string, number> = {};
 
-  while (possessionIndex < totalPossessions) {
+  while (ctx.currentPossession < ctx.totalPossessions) {
+    const { offense, defense } = ctx.activeLineups;
+
     // Track participation for minutesPlayed (before the possession executes)
-    const activeThisPoss = [...offenseState.active, ...defenseState.active];
+    const activeThisPoss = [...offense.active, ...defense.active];
     activeThisPoss.forEach((p) => {
       onCourtPossessions[p.id] = (onCourtPossessions[p.id] ?? 0) + 1;
     });
 
-    // Run the possession using ONLY the current active 5 on each side.
-    // Stats are recorded naturally inside simulatePossession.
     const { result, keepPossession } = simulatePossession({
-      offenseTeamId: offenseState.teamId,
-      offensePlayers: offenseState.active,
-      defensePlayers: defenseState.active,
-      fatigue,
+      ctx,
       rng,
       playerStats,
     });
 
     possessions.push(result);
 
-    // Update score
-    if (offenseState.teamId === teamA.id) {
-      scoreA += result.points;
+    if (ctx.offenseTeamId === teamA.id) {
+      ctx.scoreA += result.points;
     } else {
-      scoreB += result.points;
+      ctx.scoreB += result.points;
     }
 
     if (result.points > 0 && result.primaryPlayerId) {
@@ -112,33 +95,26 @@ export function simulateGame(
         (pointsScored[result.primaryPlayerId] || 0) + result.points;
     }
 
-    // === Fatigue management for this possession ===
-    // Offense drains harder, defense drains lighter
-    drainCourtFatigue(fatigue, offenseState.active, 1.0);
-    drainCourtFatigue(fatigue, defenseState.active, 0.65);
+    drainCourtFatigue(ctx.fatigueState, offense.active, 1.0);
+    drainCourtFatigue(ctx.fatigueState, defense.active, 0.65);
 
-    // Recover everyone on the bench for both teams
-    recoverBenchFatigue(fatigue, offenseState.bench);
-    recoverBenchFatigue(fatigue, defenseState.bench);
+    recoverBenchFatigue(ctx.fatigueState, offense.bench);
+    recoverBenchFatigue(ctx.fatigueState, defense.bench);
 
-    possessionIndex++;
+    ctx.currentPossession++;
 
-    // === Rotation checks (every N possessions) ===
-    if (possessionIndex % rotationConfig.interval === 0) {
-      considerRotations(offenseState, fatigue, rng, rotationConfig);
-      considerRotations(defenseState, fatigue, rng, rotationConfig);
+    advanceClock(ctx, clockRng);
+
+    if (ctx.currentPossession % rotationConfig.interval === 0) {
+      considerRotations(offense, ctx.fatigueState, rng, rotationConfig);
+      considerRotations(defense, ctx.fatigueState, rng, rotationConfig);
     }
 
-    // Alternate possession unless offensive rebound
     if (!keepPossession) {
-      const tmp = offenseState;
-      offenseState = defenseState;
-      defenseState = tmp;
+      swapPossession(ctx);
     }
-    // keepPossession: same offense keeps the ball with current active 5
   }
 
-  // Finalize minutesPlayed from participation counts (deterministic mapping)
   const totalPossForTime = possessions.length;
   Object.keys(playerStats).forEach((pid) => {
     const part = onCourtPossessions[pid] ?? 0;
@@ -148,11 +124,10 @@ export function simulateGame(
   return {
     teamAId: teamA.id,
     teamBId: teamB.id,
-    finalScoreA: scoreA,
-    finalScoreB: scoreB,
+    finalScoreA: ctx.scoreA,
+    finalScoreB: ctx.scoreB,
     possessions,
     pointsScored,
     playerStats,
   };
 }
-
