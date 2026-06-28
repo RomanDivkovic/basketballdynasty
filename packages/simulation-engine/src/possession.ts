@@ -1,21 +1,20 @@
-import { Player, PossessionResult } from '@basketball-dynasty/shared-types';
+import { PossessionResult } from '@basketball-dynasty/shared-types';
 import { RNG } from './rng';
-import { selectPrimaryBallHandler } from './playerSelection';
+import { selectPrimaryBallHandler, selectShooter } from './playerSelection';
 import { chooseOffensiveAction } from './actionSelection';
-import { chooseDefenseReaction } from './defenseSelection';
+import {
+  chooseDefenseReaction,
+  selectPrimaryDefender,
+  buildWeightedDefenseLineup,
+} from './defenseSelection';
 import { resolvePossession, PossessionContext } from './probability';
 import { generatePlayDescription } from './playDescription';
 import { applyFatigue } from './fatigue';
 import { ensurePlayerStats, PlayerGameStats } from './playerStats';
+import { GameContext } from './gameContext';
 
 export interface PossessionInput {
-  /** Team id of the offense (for result tracking) */
-  offenseTeamId: string;
-  /** The 5 active players on offense for this possession */
-  offensePlayers: Player[];
-  /** The 5 active players on defense for this possession */
-  defensePlayers: Player[];
-  fatigue: Record<string, number>;
+  ctx: GameContext;
   rng: RNG;
   /** Accumulator for box score stats (mutated during the possession) */
   playerStats: Record<string, PlayerGameStats>;
@@ -26,30 +25,55 @@ export function simulatePossession(input: PossessionInput): {
   description: string;
   keepPossession: boolean;
 } {
-  const { offenseTeamId, offensePlayers, defensePlayers, fatigue, rng, playerStats } = input;
+  const { ctx, rng, playerStats } = input;
+  const offenseTeamId = ctx.offenseTeamId;
+  const offensePlayers = ctx.activeLineups.offense.active;
+  const defensePlayers = ctx.activeLineups.defense.active;
+  const fatigue = ctx.fatigueState;
 
   if (offensePlayers.length === 0) {
     throw new Error('simulatePossession called with empty offensePlayers');
   }
 
-  const primary = selectPrimaryBallHandler(offensePlayers, rng);
+  const primary = selectPrimaryBallHandler(offensePlayers, rng, fatigue);
   const choice = chooseOffensiveAction(primary, offensePlayers, rng);
-  const defenseReaction = chooseDefenseReaction(choice.action, defensePlayers, primary, rng);
 
-  const ctx: PossessionContext = {
-    primaryOffender: primary,
+  // Catch-and-shoot: best shooter takes the attempt, not always the initiator
+  const shooter =
+    choice.action === 'catch-and-shoot-three'
+      ? selectShooter(offensePlayers, 'three', rng)
+      : primary;
+
+  const primaryDefender = selectPrimaryDefender(
+    defensePlayers,
+    choice.action,
+    choice.shotType,
+    rng
+  );
+  const defenseReaction = chooseDefenseReaction(
+    choice.action,
+    defensePlayers,
+    shooter,
+    rng,
+    choice.shotType,
+    primaryDefender
+  );
+  const weightedDefense = buildWeightedDefenseLineup(primaryDefender, defensePlayers);
+
+  const possCtx: PossessionContext = {
+    primaryOffender: shooter,
     offensiveTeamPlayers: offensePlayers,
-    defensiveTeamPlayers: defensePlayers,
+    defensiveTeamPlayers: weightedDefense,
     fatigue,
     action: choice.action,
     shotType: choice.shotType,
     defenseReaction,
   };
 
-  const outcome = resolvePossession(ctx, rng);
+  const outcome = resolvePossession(possCtx, rng);
 
   const description = generatePlayDescription(
-    primary,
+    shooter,
     choice.action,
     defenseReaction,
     outcome.descriptionSuffix,
@@ -58,8 +82,8 @@ export function simulatePossession(input: PossessionInput): {
   );
 
   // === Record natural box score stats from this possession ===
-  ensurePlayerStats(playerStats, primary.id);
-  const shooterStats = playerStats[primary.id];
+  ensurePlayerStats(playerStats, shooter.id);
+  const shooterStats = playerStats[shooter.id];
   const isThree = choice.shotType === 'three';
 
   // Every non-turnover possession that reaches a shot decision counts as a field goal attempt
@@ -80,7 +104,7 @@ export function simulatePossession(input: PossessionInput): {
 
     // Assist: on made baskets, often created by teammate (pick-and-roll, drive, post, etc.)
     if (offensePlayers.length > 1 && rng() < 0.58) {
-      const candidates = offensePlayers.filter((p) => p.id !== primary.id);
+      const candidates = offensePlayers.filter((p) => p.id !== shooter.id);
       if (candidates.length > 0) {
         const assister = candidates[Math.floor(rng() * candidates.length)];
         ensurePlayerStats(playerStats, assister.id);
@@ -116,17 +140,14 @@ export function simulatePossession(input: PossessionInput): {
   }
 
   // Apply fatigue to primary ball handler (high usage)
-  applyFatigue(fatigue, primary.id, primary, 1.15);
+  applyFatigue(fatigue, shooter.id, shooter, 1.15);
 
-  // Lightly fatigue one random on-court defender
-  if (defensePlayers.length > 0) {
-    const randomDefender = defensePlayers[Math.floor(rng() * defensePlayers.length)];
-    applyFatigue(fatigue, randomDefender.id, randomDefender, 0.55);
-  }
+  // Primary matchup defender works hardest on the possession
+  applyFatigue(fatigue, primaryDefender.id, primaryDefender, 0.65);
 
   const result: PossessionResult = {
     offenseTeamId,
-    primaryPlayerId: primary.id,
+    primaryPlayerId: shooter.id,
     action: choice.action,
     defenseReaction,
     description,
@@ -141,4 +162,3 @@ export function simulatePossession(input: PossessionInput): {
     keepPossession: outcome.offensiveRebound,
   };
 }
-

@@ -1,6 +1,7 @@
 import { Player } from '@basketball-dynasty/shared-types';
 import { RNG } from './rng';
 import { getFatigueMultiplier } from './fatigue';
+import * as LeagueTuning from './tuning/leagueTuning';
 
 export interface PossessionContext {
   primaryOffender: Player;
@@ -57,46 +58,62 @@ export function resolvePossession(ctx: PossessionContext, rng: RNG): Outcome {
   const avgInterior = average(effectiveDefenders.map((d) => d.interior));
   const avgPerimeter = average(effectiveDefenders.map((d) => d.perimeter));
 
+  // Base make probability derived from skill (tuned league constants)
+  let baseProb = (skill - LeagueTuning.baseSkillOffset) / LeagueTuning.baseSkillScale;
+  let makeProb = baseProb * LeagueTuning.baseCompression + LeagueTuning.baseShotSuccess;
+
+  // Three pointers are structurally harder
+  if (shotType === 'three') {
+    makeProb *= LeagueTuning.threePointMultiplier;
+  }
+
   // Defense modifier (higher defense = lower make chance)
+  const defBaseline = 63;
   let defenseMod = 0;
-  if (shotType === 'inside') defenseMod = (avgInterior - 60) * 0.45;
-  if (shotType === 'midrange') defenseMod = (avgPerimeter - 60) * 0.4;
-  if (shotType === 'three') defenseMod = (avgPerimeter - 60) * 0.35;
+  if (shotType === 'inside') {
+    defenseMod = (avgInterior - defBaseline) * LeagueTuning.defenseImpactFactor * 0.011;
+  } else if (shotType === 'midrange') {
+    defenseMod = (avgPerimeter - defBaseline) * LeagueTuning.defenseImpactFactor * 0.010;
+  } else {
+    defenseMod = (avgPerimeter - defBaseline) * LeagueTuning.defenseImpactFactor * 0.0095;
+  }
 
-  // Action & IQ modifiers
+  // Action & IQ modifiers (scaled to prevent excessive boost)
+  const ams = LeagueTuning.actionModScale;
   let actionMod = 0;
-  if (action === 'post-up') actionMod = r.basketballIQ * 0.15 + r.athleticism * 0.1;
-  if (action === 'drive') actionMod = r.athleticism * 0.2 + r.ballHandling * 0.1;
-  if (action === 'pick-and-roll') actionMod = r.passing * 0.15 + r.basketballIQ * 0.1;
+  if (action === 'post-up') actionMod = (r.basketballIQ * 0.15 + r.athleticism * 0.1) * ams;
+  if (action === 'drive') actionMod = (r.athleticism * 0.2 + r.ballHandling * 0.1) * ams;
+  if (action === 'pick-and-roll') actionMod = (r.passing * 0.15 + r.basketballIQ * 0.1) * ams;
 
-  // Reaction penalty/bonus
+  // Reaction penalty/bonus (tuned coverage effects)
   let reactionMod = 0;
-  if (defenseReaction === 'double-team') reactionMod = -8;
-  if (defenseReaction === 'close-out') reactionMod = -4;
-  if (defenseReaction === 'help-defense') reactionMod = -2;
-  if (defenseReaction === 'stay-home') reactionMod = 2;
+  if (defenseReaction === 'double-team') reactionMod = LeagueTuning.reactionDoubleTeam;
+  if (defenseReaction === 'close-out') reactionMod = LeagueTuning.reactionCloseOut;
+  if (defenseReaction === 'help-defense') reactionMod = LeagueTuning.reactionHelpDefense;
+  if (defenseReaction === 'stay-home') reactionMod = LeagueTuning.reactionStayHome;
 
-  // Compute raw make probability (before variance)
-  let makeProb = (skill - 30) / 70;
-  makeProb = makeProb * 0.9 + 0.18;
+  // Combine mods
   makeProb += (actionMod + reactionMod - defenseMod) / 100;
-  makeProb *= fatigueMod;
 
-  // Clamp
-  makeProb = Math.max(0.18, Math.min(0.92, makeProb));
+  // Apply fatigue with configurable impact strength
+  const fatigueEffect = 1 - (1 - fatigueMod) * LeagueTuning.fatigueImpactFactor;
+  makeProb *= fatigueEffect;
+
+  // Clamp raw probability
+  makeProb = Math.max(LeagueTuning.rawMakeProbMin, Math.min(LeagueTuning.rawMakeProbMax, makeProb));
 
   // Turnover chance (higher with poor ball handling / high pressure)
-  let turnoverProb = 0.06;
+  let turnoverProb = LeagueTuning.turnoverBase;
   if (action === 'drive' || action === 'isolation') {
-    turnoverProb = 0.09 + (70 - r.ballHandling) / 400;
+    turnoverProb = LeagueTuning.turnoverBase + LeagueTuning.turnoverDriveIsoExtra + (70 - r.ballHandling) / 420;
   }
-  if (defenseReaction === 'double-team') turnoverProb += 0.04;
-  turnoverProb = Math.min(0.18, turnoverProb);
+  if (defenseReaction === 'double-team') turnoverProb += LeagueTuning.turnoverDoubleTeamExtra;
+  turnoverProb = Math.min(LeagueTuning.turnoverMax, turnoverProb);
 
   // First decide if turnover
   if (rng() < turnoverProb) {
     let stealBy: string | undefined;
-    if (defensiveTeamPlayers.length > 0 && rng() < 0.42) {
+    if (defensiveTeamPlayers.length > 0 && rng() < LeagueTuning.stealOnTurnoverRate) {
       const idx = Math.floor(rng() * defensiveTeamPlayers.length);
       stealBy = defensiveTeamPlayers[idx].id;
     }
@@ -113,14 +130,14 @@ export function resolvePossession(ctx: PossessionContext, rng: RNG): Outcome {
   // Check for block on inside-oriented attempts (before final make roll)
   let blockBy: string | undefined;
   const canBeBlocked = shotType === 'inside' || action === 'drive' || action === 'post-up';
-  if (canBeBlocked && defensiveTeamPlayers.length > 0 && rng() < 0.038) {
+  if (canBeBlocked && defensiveTeamPlayers.length > 0 && rng() < LeagueTuning.blockBaseRate) {
     const idx = Math.floor(rng() * defensiveTeamPlayers.length);
     blockBy = defensiveTeamPlayers[idx].id;
   }
 
   // Roll for make/miss with variance
-  const variance = (rng() - 0.5) * 0.22;
-  const finalProb = Math.max(0.12, Math.min(0.95, makeProb + variance));
+  const variance = (rng() - 0.5) * LeagueTuning.varianceLevel;
+  const finalProb = Math.max(LeagueTuning.finalMakeProbMin, Math.min(LeagueTuning.finalMakeProbMax, makeProb + variance));
 
   let made = rng() < finalProb;
 
@@ -145,7 +162,10 @@ export function resolvePossession(ctx: PossessionContext, rng: RNG): Outcome {
   // Miss -> check offensive rebound (slightly fatigue-affected)
   const offRebFatigue = getFatigueMultiplier(fatigue[primaryOffender.id] ?? 1.0);
   const offRebRating = r.rebounding;
-  const offRebChance = ((offRebRating * offRebFatigue) / 120) * 0.32 + 0.08;
+  const offRebChance =
+    ((offRebRating * offRebFatigue) / LeagueTuning.offReboundSkillDivisor) *
+      LeagueTuning.offReboundBaseRate +
+    LeagueTuning.offReboundFloor;
   const offensiveRebound = rng() < offRebChance;
 
   return {
