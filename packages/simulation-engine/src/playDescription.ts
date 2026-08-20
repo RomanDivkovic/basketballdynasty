@@ -31,6 +31,18 @@ export function generatePlayDescription(
   return `${actionText}. ${defenseText}. Miss.`;
 }
 
+export function generateFoulPlayDescription(
+  primary: Player,
+  action: OffensiveAction,
+  defenseReaction: DefenseReaction,
+  freeThrowSuffix: string,
+  shotType: 'inside' | 'midrange' | 'three'
+): string {
+  const actionText = mapActionToText(action, primary.name, shotType);
+  const defenseText = mapDefenseToText(defenseReaction, action);
+  return `${actionText}. ${defenseText}. Foul. ${freeThrowSuffix}.`;
+}
+
 function mapActionToText(action: OffensiveAction, name: string, shotType: 'inside' | 'midrange' | 'three'): string {
   switch (action) {
     case 'post-up':

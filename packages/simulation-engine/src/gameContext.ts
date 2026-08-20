@@ -2,6 +2,7 @@ import type { Team } from '@basketball-dynasty/shared-types';
 import { createInitialFatigue } from './fatigue';
 import { createInitialRotationState, TeamRotationState } from './lineup';
 import { createGameClock } from './gameClock';
+import type { FreeThrowState } from './fouls';
 
 /**
  * Active on-court lineups for the current possession.
@@ -29,6 +30,12 @@ export interface GameContext {
   defenseTeamId: string;
   activeLineups: ActiveLineups;
   fatigueState: Record<string, number>;
+  /** teamId -> quarter -> foul count */
+  teamFouls: Record<string, Record<number, number>>;
+  /** playerId -> total fouls in the current game */
+  playerFouls: Record<string, number>;
+  /** Set during foul resolution; cleared after free throws resolve */
+  freeThrowState: FreeThrowState | null;
 }
 
 export function createGameContext(
@@ -57,6 +64,12 @@ export function createGameContext(
       defense: teamBState,
     },
     fatigueState: createInitialFatigue(allPlayers),
+    teamFouls: {
+      [teamA.id]: {},
+      [teamB.id]: {},
+    },
+    playerFouls: {},
+    freeThrowState: null,
   };
 }
 

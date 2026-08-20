@@ -8,10 +8,16 @@ import {
   buildWeightedDefenseLineup,
 } from './defenseSelection';
 import { resolvePossession, PossessionContext } from './probability';
-import { generatePlayDescription } from './playDescription';
+import { generatePlayDescription, generateFoulPlayDescription } from './playDescription';
 import { applyFatigue } from './fatigue';
 import { ensurePlayerStats, PlayerGameStats } from './playerStats';
 import { GameContext } from './gameContext';
+import {
+  recordDefensiveFoul,
+  determineFreeThrowAttempts,
+  resolveFreeThrows,
+  formatFreeThrowSuffix,
+} from './fouls';
 
 export interface PossessionInput {
   ctx: GameContext;
@@ -64,6 +70,7 @@ export function simulatePossession(input: PossessionInput): {
     primaryOffender: shooter,
     offensiveTeamPlayers: offensePlayers,
     defensiveTeamPlayers: weightedDefense,
+    primaryDefender,
     fatigue,
     action: choice.action,
     shotType: choice.shotType,
@@ -72,14 +79,54 @@ export function simulatePossession(input: PossessionInput): {
 
   const outcome = resolvePossession(possCtx, rng);
 
-  const description = generatePlayDescription(
-    shooter,
-    choice.action,
-    defenseReaction,
-    outcome.descriptionSuffix,
-    outcome.points,
-    choice.shotType
-  );
+  let points = outcome.points;
+  let descriptionSuffix = outcome.descriptionSuffix;
+  let keepPossession = outcome.offensiveRebound;
+
+  if (outcome.fouled && outcome.foulBy) {
+    const teamFoulCount = recordDefensiveFoul(ctx, ctx.defenseTeamId, outcome.foulBy);
+    const inBonus = teamFoulCount >= 5;
+    const ftAttempts = determineFreeThrowAttempts(choice.action, choice.shotType, inBonus);
+
+    ctx.freeThrowState = {
+      shooterId: shooter.id,
+      attemptsAwarded: ftAttempts,
+      fouledById: outcome.foulBy,
+      inBonus,
+    };
+
+    const ftResult = resolveFreeThrows(shooter, ftAttempts, fatigue, rng);
+    points = ftResult.made;
+    descriptionSuffix = formatFreeThrowSuffix(ftResult.made, ftResult.attempts);
+    keepPossession = false;
+
+    ensurePlayerStats(playerStats, shooter.id);
+    playerStats[shooter.id].points += ftResult.made;
+    playerStats[shooter.id].freeThrowsAttempted += ftResult.attempts;
+    playerStats[shooter.id].freeThrowsMade += ftResult.made;
+
+    ensurePlayerStats(playerStats, outcome.foulBy);
+    playerStats[outcome.foulBy].personalFouls += 1;
+
+    ctx.freeThrowState = null;
+  }
+
+  const description = outcome.fouled
+    ? generateFoulPlayDescription(
+        shooter,
+        choice.action,
+        defenseReaction,
+        descriptionSuffix,
+        choice.shotType
+      )
+    : generatePlayDescription(
+        shooter,
+        choice.action,
+        defenseReaction,
+        descriptionSuffix,
+        points,
+        choice.shotType
+      );
 
   // === Record natural box score stats from this possession ===
   ensurePlayerStats(playerStats, shooter.id);
@@ -87,8 +134,8 @@ export function simulatePossession(input: PossessionInput): {
   const isThree = choice.shotType === 'three';
 
   // Every non-turnover possession that reaches a shot decision counts as a field goal attempt
-  // (turnovers are already branched before shot attempt in resolve)
-  if (!outcome.turnover) {
+  // (turnovers and fouls stop the play before a field goal attempt)
+  if (!outcome.turnover && !outcome.fouled) {
     shooterStats.fieldGoalsAttempted += 1;
     if (isThree) {
       shooterStats.threePointersAttempted += 1;
@@ -117,8 +164,8 @@ export function simulatePossession(input: PossessionInput): {
     shooterStats.turnovers += 1;
   }
 
-  // Rebound on misses (not turnovers)
-  if (!outcome.made && !outcome.turnover) {
+  // Rebound on misses (not turnovers or fouls)
+  if (!outcome.made && !outcome.turnover && !outcome.fouled) {
     const pool = outcome.offensiveRebound ? offensePlayers : defensePlayers;
     if (pool.length > 0) {
       const reb = pool[Math.floor(rng() * pool.length)];
@@ -151,14 +198,14 @@ export function simulatePossession(input: PossessionInput): {
     action: choice.action,
     defenseReaction,
     description,
-    points: outcome.points,
+    points,
     turnover: outcome.turnover,
-    offensiveRebound: outcome.offensiveRebound,
+    offensiveRebound: keepPossession,
   };
 
   return {
     result,
     description,
-    keepPossession: outcome.offensiveRebound,
+    keepPossession,
   };
 }
