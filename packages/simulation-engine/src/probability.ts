@@ -2,6 +2,7 @@ import { Player } from '@basketball-dynasty/shared-types';
 import { RNG } from './rng';
 import { getFatigueMultiplier } from './fatigue';
 import * as LeagueTuning from './tuning/leagueTuning';
+import { computeFoulChance } from './fouls';
 
 export interface PossessionContext {
   primaryOffender: Player;
@@ -9,6 +10,8 @@ export interface PossessionContext {
   offensiveTeamPlayers: Player[];
   /** Exactly the 5 (or fewer) players currently on court for defense */
   defensiveTeamPlayers: Player[];
+  /** Primary on-ball matchup defender for foul attribution */
+  primaryDefender: Player;
   fatigue: Record<string, number>;
   action: string;
   shotType: 'inside' | 'midrange' | 'three';
@@ -24,6 +27,8 @@ export interface Outcome {
   // Natural stat events emerging from the possession
   blockBy?: string; // playerId of the defender who blocked the shot
   stealBy?: string; // playerId of the defender who stole the ball on turnover
+  fouled?: boolean;
+  foulBy?: string;
 }
 
 /**
@@ -32,7 +37,15 @@ export interface Outcome {
  * Now operates strictly on the active on-court players.
  */
 export function resolvePossession(ctx: PossessionContext, rng: RNG): Outcome {
-  const { primaryOffender, defensiveTeamPlayers, fatigue, action, shotType, defenseReaction } = ctx;
+  const {
+    primaryOffender,
+    primaryDefender,
+    defensiveTeamPlayers,
+    fatigue,
+    action,
+    shotType,
+    defenseReaction,
+  } = ctx;
 
   const r = primaryOffender.ratings;
   const fatigueFactor = fatigue[primaryOffender.id] ?? 1.0;
@@ -124,6 +137,20 @@ export function resolvePossession(ctx: PossessionContext, rng: RNG): Outcome {
       offensiveRebound: false,
       descriptionSuffix: 'turnover',
       stealBy,
+    };
+  }
+
+  // Rare foul on physical / shooting attempts (before block or make roll)
+  const foulChance = computeFoulChance(action, shotType, primaryOffender, primaryDefender, fatigue);
+  if (foulChance > 0 && rng() < foulChance) {
+    return {
+      made: false,
+      points: 0,
+      turnover: false,
+      offensiveRebound: false,
+      descriptionSuffix: 'fouled',
+      fouled: true,
+      foulBy: primaryDefender.id,
     };
   }
 

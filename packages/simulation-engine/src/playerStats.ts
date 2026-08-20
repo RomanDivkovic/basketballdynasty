@@ -9,6 +9,9 @@ export interface PlayerGameStats {
   steals: number;
   blocks: number;
   turnovers: number;
+  personalFouls: number;
+  freeThrowsMade: number;
+  freeThrowsAttempted: number;
   minutesPlayed: number;
 }
 
@@ -24,6 +27,9 @@ export function createEmptyPlayerGameStats(): PlayerGameStats {
     steals: 0,
     blocks: 0,
     turnovers: 0,
+    personalFouls: 0,
+    freeThrowsMade: 0,
+    freeThrowsAttempted: 0,
     minutesPlayed: 0,
   };
 }

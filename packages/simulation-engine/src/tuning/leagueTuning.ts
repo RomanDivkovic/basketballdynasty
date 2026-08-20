@@ -54,3 +54,20 @@ export const rawMakeProbMin = 0.26;
 export const rawMakeProbMax = 0.66;
 export const finalMakeProbMin = 0.20;
 export const finalMakeProbMax = 0.74;
+
+// Foul event rates (rare — applied only on eligible actions)
+export const foulBaseRate = 0.032;
+export const foulOffenseAthleticismFactor = 0.00022;
+export const foulOffenseInsideFactor = 0.00018;
+export const foulThreeAttemptFactor = 0.00012;
+export const foulDefenseSkillFactor = 0.00016;
+export const foulFatigueFactor = 0.045;
+export const foulProbMin = 0.012;
+export const foulProbMax = 0.085;
+
+// Free throw make probability (~75% league baseline)
+export const ftBaseRate = 0.74;
+export const ftInsideFactor = 0.0018;
+export const ftIqFactor = 0.0012;
+export const ftProbMin = 0.58;
+export const ftProbMax = 0.90;

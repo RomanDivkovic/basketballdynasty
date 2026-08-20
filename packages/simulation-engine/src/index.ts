@@ -11,6 +11,13 @@ export {
   GAME_LENGTH_SECONDS,
 } from './gameClock';
 export type { GameClockState, ClockAdvanceResult } from './gameClock';
+export {
+  computeFoulChance,
+  recordDefensiveFoul,
+  resolveFreeThrows,
+  determineFreeThrowAttempts,
+} from './fouls';
+export type { FreeThrowState, FreeThrowResult } from './fouls';
 export { createRNG } from './rng';
 export type { RNG } from './rng';
 
