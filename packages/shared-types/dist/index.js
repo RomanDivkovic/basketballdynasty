@@ -18,4 +18,5 @@ __exportStar(require("./player"), exports);
 __exportStar(require("./team"), exports);
 __exportStar(require("./coach"), exports);
 __exportStar(require("./game"), exports);
+__exportStar(require("./league"), exports);
 //# sourceMappingURL=index.js.map
