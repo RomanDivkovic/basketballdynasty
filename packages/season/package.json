@@ -1,0 +1,17 @@
+{
+  "name": "@basketball-dynasty/season",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "npm run build && node --test dist/index.test.js",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@basketball-dynasty/shared-types": "file:../shared-types",
+    "@basketball-dynasty/simulation-engine": "file:../simulation-engine",
+    "@basketball-dynasty/save-system": "file:../save-system"
+  }
+}

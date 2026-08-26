@@ -15,14 +15,16 @@
       "@basketball-dynasty/simulation-engine": ["packages/simulation-engine/src"],
       "@basketball-dynasty/ai-coaching": ["packages/ai-coaching/src"],
       "@basketball-dynasty/data-loader": ["packages/data-loader/src"],
-      "@basketball-dynasty/save-system": ["packages/save-system/src"]
-    }
+"@basketball-dynasty/save-system": ["packages/save-system/src"],
+    "@basketball-dynasty/season": ["packages/season/src"]
+  }
   },
   "references": [
     { "path": "packages/shared-types" },
     { "path": "packages/ai-coaching" },
     { "path": "packages/simulation-engine" },
     { "path": "packages/data-loader" },
-    { "path": "packages/save-system" }
+    { "path": "packages/save-system" },
+    { "path": "packages/season" }
   ]
 }
