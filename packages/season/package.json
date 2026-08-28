@@ -7,7 +7,11 @@
   "scripts": {
     "build": "tsc",
     "test": "npm run build && node --test dist/index.test.js",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "run": "node ./dist/bin/run-season.js"
+  },
+  "bin": {
+    "season-run": "dist/bin/run-season.js"
   },
   "dependencies": {
     "@basketball-dynasty/shared-types": "file:../shared-types",
