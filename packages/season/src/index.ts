@@ -1,6 +1,9 @@
 import type { Team } from '@basketball-dynasty/shared-types';
-import { simulateGame } from '@basketball-dynasty/simulation-engine';
-import { buildLeagueSnapshot, saveBundleToDisk } from '@basketball-dynasty/save-system';
+import { simulateGame, createRNG } from '@basketball-dynasty/simulation-engine';
+import { buildLeagueSnapshot, saveBundleToDisk, parseSaveBundle } from '@basketball-dynasty/save-system';
+import * as fs from 'fs';
+import * as path from 'path';
+import { applyOffseasonToTeams } from './offseason';
 
 export interface GameFixture {
   homeTeamId: string;
@@ -163,5 +166,65 @@ export function runPlayoffs(state: SeasonState, topN = 4, options: SeedOptions =
 
 export function saveSeasonSnapshot(filePath: string, season: SeasonState): void {
   saveBundleToDisk(filePath, season, 'season');
+}
+
+// Dynasty layer: lightweight wrapper to run multiple seasons and persist a dynasty.
+export interface DynastyState {
+  dynastyId: string;
+  seasons: SeasonState[]; // archived completed seasons
+  currentSeason: SeasonState;
+  seasonNumber: number;
+  userTeamId?: string;
+}
+
+export function createDynastyState(teams: Team[], dynastyId = 'dynasty-1', userTeamId?: string): DynastyState {
+  const season = createSeasonState(teams, `${dynastyId}-season-1`);
+  return {
+    dynastyId,
+    seasons: [],
+    currentSeason: season,
+    seasonNumber: 1,
+    userTeamId,
+  };
+}
+
+/**
+ * Advance the dynasty by finalizing the current season (if needed), archiving it,
+ * and creating the next season state. Offseason changes (aging, contracts, etc.)
+ * are intentionally minimal here and can be extended later.
+ */
+export function advanceToNextSeason(dynasty: DynastyState, options: SeedOptions = {}): DynastyState {
+  let current = dynasty.currentSeason;
+
+  // If the current season isn't finished, complete it first.
+  if (!current.completed) {
+    const remaining = current.schedule.length - current.results.length;
+    current = playNextRound(current, remaining, options);
+  }
+
+  const archived = current;
+  const seasons = [...dynasty.seasons, archived];
+  const nextNumber = dynasty.seasonNumber + 1;
+
+  // Apply offseason rules (aging, retirements, free agency, draft, development)
+  const offseason = applyOffseasonToTeams(archived.teams, archived.seasonId, archived.standings, { seed: options.seed });
+  const nextSeason = createSeasonState(offseason.teams, `${dynasty.dynastyId}-season-${nextNumber}`);
+
+  return {
+    ...dynasty,
+    seasons,
+    currentSeason: nextSeason,
+    seasonNumber: nextNumber,
+  };
+}
+
+export function saveDynastySnapshot(filePath: string, dynasty: DynastyState): void {
+  saveBundleToDisk(filePath, dynasty, 'dynasty');
+}
+
+export function loadDynastySnapshot(filePath: string): DynastyState {
+  const raw = fs.readFileSync(path.resolve(filePath), 'utf-8');
+  const bundle = parseSaveBundle<DynastyState>(raw);
+  return bundle.data;
 }
 

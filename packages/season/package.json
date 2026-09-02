@@ -8,10 +8,12 @@
     "build": "tsc",
     "test": "npm run build && node --test dist/index.test.js",
     "clean": "rm -rf dist",
-    "run": "node ./dist/bin/run-season.js"
+    "run": "node ./dist/bin/run-season.js",
+    "run:dynasty": "node ./dist/bin/run-dynasty.js"
   },
   "bin": {
-    "season-run": "dist/bin/run-season.js"
+    "season-run": "dist/bin/run-season.js",
+    "dynasty-run": "dist/bin/run-dynasty.js"
   },
   "dependencies": {
     "@basketball-dynasty/shared-types": "file:../shared-types",

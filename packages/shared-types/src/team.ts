@@ -6,4 +6,7 @@ export interface Team {
   name: string;
   players: Player[];
   coach?: Coach;
+  /** Optional finance fields for offseason and contract systems */
+  salaryCap?: number;
+  budget?: number;
 }

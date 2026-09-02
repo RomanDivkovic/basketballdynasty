@@ -19,6 +19,13 @@ export interface Player {
     id: string;
     name: string;
     position: Position;
+    /** Optional player age used by offseason rules */
+    age?: number;
+    /** Optional contract information for offseason and FA logic */
+    contract?: {
+        salary: number;
+        yearsRemaining: number;
+    };
     ratings: PlayerRatings;
 }
 //# sourceMappingURL=player.d.ts.map
