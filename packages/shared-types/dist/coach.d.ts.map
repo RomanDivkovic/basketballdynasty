@@ -1,1 +1,1 @@
-{"version":3,"file":"coach.d.ts","sourceRoot":"","sources":["../src/coach.ts"],"names":[],"mappings":"AAAA,MAAM,WAAW,KAAK;IACpB,EAAE,EAAE,MAAM,CAAC;IACX,IAAI,EAAE,MAAM,CAAC;IAEb,cAAc,EAAE,MAAM,CAAC;IACvB,cAAc,EAAE,MAAM,CAAC;CACxB"}
+{"version":3,"file":"coach.d.ts","sourceRoot":"","sources":["../src/coach.ts"],"names":[],"mappings":"AAAA,MAAM,WAAW,KAAK;IACpB,EAAE,EAAE,MAAM,CAAC;IACX,IAAI,EAAE,MAAM,CAAC;IAEb,cAAc,EAAE,MAAM,CAAC;IACvB,cAAc,EAAE,MAAM,CAAC;IACvB,+EAA+E;IAC/E,iBAAiB,CAAC,EAAE,MAAM,CAAC;CAC5B"}
