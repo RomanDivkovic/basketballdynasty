@@ -1,4 +1,4 @@
-import { PossessionResult } from '@basketball-dynasty/shared-types';
+import { PossessionResult, ShotType } from '@basketball-dynasty/shared-types';
 import { RNG } from './rng';
 import { selectPrimaryBallHandler, selectShooter } from './playerSelection';
 import { chooseOffensiveAction } from './actionSelection';
@@ -148,30 +148,10 @@ export function simulatePossession(input: PossessionInput): {
       shooterStats.threePointersMade += 1;
     }
     shooterStats.points += outcome.points;
-
-    // Assist: on made baskets, often created by teammate (pick-and-roll, drive, post, etc.)
-    if (offensePlayers.length > 1 && rng() < 0.58) {
-      const candidates = offensePlayers.filter((p) => p.id !== shooter.id);
-      if (candidates.length > 0) {
-        const assister = candidates[Math.floor(rng() * candidates.length)];
-        ensurePlayerStats(playerStats, assister.id);
-        playerStats[assister.id].assists += 1;
-      }
-    }
   }
 
   if (outcome.turnover) {
     shooterStats.turnovers += 1;
-  }
-
-  // Rebound on misses (not turnovers or fouls)
-  if (!outcome.made && !outcome.turnover && !outcome.fouled) {
-    const pool = outcome.offensiveRebound ? offensePlayers : defensePlayers;
-    if (pool.length > 0) {
-      const reb = pool[Math.floor(rng() * pool.length)];
-      ensurePlayerStats(playerStats, reb.id);
-      playerStats[reb.id].rebounds += 1;
-    }
   }
 
   // Apply block credit if the outcome carried one
@@ -192,6 +172,30 @@ export function simulatePossession(input: PossessionInput): {
   // Primary matchup defender works hardest on the possession
   applyFatigue(fatigue, primaryDefender.id, primaryDefender, 0.65);
 
+  const shotLocation = createShotLocation(choice.shotType, rng);
+  let assistPlayerId: string | undefined;
+  let reboundPlayerId: string | undefined;
+
+  if (outcome.made && offensePlayers.length > 1 && rng() < 0.58) {
+    const candidates = offensePlayers.filter((p) => p.id !== shooter.id);
+    if (candidates.length > 0) {
+      const assister = candidates[Math.floor(rng() * candidates.length)];
+      assistPlayerId = assister.id;
+      ensurePlayerStats(playerStats, assister.id);
+      playerStats[assister.id].assists += 1;
+    }
+  }
+
+  if (!outcome.made && !outcome.turnover && !outcome.fouled) {
+    const pool = outcome.offensiveRebound ? offensePlayers : defensePlayers;
+    if (pool.length > 0) {
+      const reb = pool[Math.floor(rng() * pool.length)];
+      reboundPlayerId = reb.id;
+      ensurePlayerStats(playerStats, reb.id);
+      playerStats[reb.id].rebounds += 1;
+    }
+  }
+
   const result: PossessionResult = {
     offenseTeamId,
     primaryPlayerId: shooter.id,
@@ -201,11 +205,37 @@ export function simulatePossession(input: PossessionInput): {
     points,
     turnover: outcome.turnover,
     offensiveRebound: keepPossession,
+    shotType: choice.shotType,
+    shotLocation,
+    made: outcome.made,
+    assistPlayerId,
+    reboundPlayerId,
   };
 
   return {
     result,
     description,
     keepPossession,
+  };
+}
+
+function createShotLocation(shotType: ShotType, rng: RNG) {
+  if (shotType === 'inside') {
+    return {
+      x: Number((35 + rng() * 30).toFixed(1)),
+      y: Number((25 + rng() * 28).toFixed(1)),
+    };
+  }
+
+  if (shotType === 'midrange') {
+    return {
+      x: Number((18 + rng() * 64).toFixed(1)),
+      y: Number((16 + rng() * 52).toFixed(1)),
+    };
+  }
+
+  return {
+    x: Number((12 + rng() * 76).toFixed(1)),
+    y: Number((10 + rng() * 58).toFixed(1)),
   };
 }

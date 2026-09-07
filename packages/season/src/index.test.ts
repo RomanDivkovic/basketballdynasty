@@ -5,6 +5,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 
 import type { Player, Team } from '@basketball-dynasty/shared-types';
+import { simulateGame } from '@basketball-dynasty/simulation-engine';
 import {
   generateSchedule,
   createSeasonState,
@@ -80,6 +81,21 @@ test('stepwise season: create state and play next games/rounds deterministically
   assert.equal(after2.results.length, 2);
   assert.equal(after2.completed, true);
   assert.equal(after2.standings.length, 2);
+});
+
+test('simulateGame records shot coordinates and event metadata for match viewer', () => {
+  const teamA = makeTeam('a', 'Alpha');
+  const teamB = makeTeam('b', 'Beta');
+
+  const game = simulateGame(teamA, teamB, { seed: 42, totalPossessions: 32 });
+  assert.ok(game.possessions.length > 0);
+  const possessionWithShot = game.possessions.find((p) => p.shotLocation !== undefined || p.shotType !== undefined);
+
+  assert.ok(possessionWithShot);
+  assert.ok(typeof possessionWithShot!.shotLocation?.x === 'number');
+  assert.ok(typeof possessionWithShot!.shotLocation?.y === 'number');
+  assert.ok(typeof possessionWithShot!.shotType === 'string');
+  assert.ok(Array.isArray(game.gameEvents));
 });
 
 test('saveSeasonSnapshot persists a season snapshot to disk', () => {

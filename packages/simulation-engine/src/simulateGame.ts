@@ -1,4 +1,9 @@
-import type { Team, PossessionResult, GameResult as BaseGameResult } from '@basketball-dynasty/shared-types';
+import type {
+  Team,
+  PossessionResult,
+  GameResult as BaseGameResult,
+  GameEvent,
+} from '@basketball-dynasty/shared-types';
 import { createRNG, RNG, defaultRNG } from './rng';
 import {
   drainCourtFatigue,
@@ -121,12 +126,62 @@ export function simulateGame(
     playerStats[pid].minutesPlayed = computeMinutesPlayed(part, totalPossForTime);
   });
 
+  const gameEvents: GameEvent[] = possessions.flatMap((possession, index) => {
+    const eventPeriod = Math.max(1, Math.min(4, Math.ceil((index + 1) / 25)));
+    const baseEvent: GameEvent = {
+      id: `possession-${index + 1}`,
+      type: possession.turnover ? 'turnover' : possession.shotType ? 'shot' : 'rebound',
+      description: possession.description,
+      period: eventPeriod,
+      possession: index + 1,
+      teamId: possession.offenseTeamId,
+      playerId: possession.primaryPlayerId,
+      shotType: possession.shotType,
+      shotLocation: possession.shotLocation,
+      points: possession.points,
+      made: possession.made,
+      assistPlayerId: possession.assistPlayerId,
+      reboundPlayerId: possession.reboundPlayerId,
+      opponentTeamId: possession.offenseTeamId === teamA.id ? teamB.id : teamA.id,
+    };
+
+    const events: GameEvent[] = [baseEvent];
+
+    if (possession.assistPlayerId) {
+      events.push({
+        id: `assist-${index + 1}`,
+        type: 'assist',
+        description: 'Assist',
+        period: eventPeriod,
+        possession: index + 1,
+        teamId: possession.offenseTeamId,
+        playerId: possession.assistPlayerId,
+      });
+    }
+
+    if (possession.reboundPlayerId) {
+      events.push({
+        id: `rebound-${index + 1}`,
+        type: 'rebound',
+        description: 'Rebound',
+        period: eventPeriod,
+        possession: index + 1,
+        teamId: possession.offensiveRebound ? possession.offenseTeamId : (possession.offenseTeamId === teamA.id ? teamB.id : teamA.id),
+        playerId: possession.reboundPlayerId,
+        opponentTeamId: possession.offenseTeamId === teamA.id ? teamB.id : teamA.id,
+      });
+    }
+
+    return events;
+  });
+
   return {
     teamAId: teamA.id,
     teamBId: teamB.id,
     finalScoreA: ctx.scoreA,
     finalScoreB: ctx.scoreB,
     possessions,
+    gameEvents,
     pointsScored,
     playerStats,
   };
