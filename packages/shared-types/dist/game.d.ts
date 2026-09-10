@@ -41,7 +41,7 @@ export interface GameResult {
     finalScoreA: number;
     finalScoreB: number;
     possessions: PossessionResult[];
-    gameEvents: GameEvent[];
+    gameEvents?: GameEvent[];
     pointsScored: Record<string, number>;
 }
 export interface GameState {

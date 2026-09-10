@@ -8,6 +8,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@basketball-dynasty/shared-types": "file:../packages/shared-types",
+    "@basketball-dynasty/simulation-engine": "file:../packages/simulation-engine",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
