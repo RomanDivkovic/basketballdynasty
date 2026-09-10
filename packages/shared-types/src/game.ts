@@ -54,7 +54,7 @@ export interface GameResult {
   finalScoreA: number;
   finalScoreB: number;
   possessions: PossessionResult[];
-  gameEvents: GameEvent[];
+  gameEvents?: GameEvent[];
   // Simple box score style aggregates (playerId -> points)
   pointsScored: Record<string, number>;
 }
